@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 
 export const authenticateToken = (req, res, next) => {
+
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
@@ -18,16 +19,24 @@ export const authenticateToken = (req, res, next) => {
     }
 
     try {
+
         const decoded = jwt.verify(
             token,
             process.env.JWT_SECRET
         );
+
+        if (decoded.purpose === "2fa") {
+            return res.status(401).json({
+                message: "Two-factor authentication must be completed"
+            });
+        }
 
         req.user = decoded;
 
         next();
 
     } catch (error) {
+
         return res.status(401).json({
             message: "Invalid or expired token"
         });

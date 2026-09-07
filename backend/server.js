@@ -5,6 +5,9 @@ import cors from "cors";
 import pool from "./src/config/db.js";
 import authRoutes from "./src/routes/authRoute.js";
 import { authenticateToken } from "./src/middleware/authMiddleware.js";
+import twoFactorRoutes from "./src/routes/twoFactorRoute.js";
+
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -65,6 +68,7 @@ app.get(
 );
 
 app.use("/api/auth",authRoutes);
+app.use("/api/2fa", twoFactorRoutes);
 app.listen(PORT,()=>{
     console.log(`Server is running on port ${PORT}`);
 })
