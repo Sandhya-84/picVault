@@ -1,7 +1,7 @@
 import express from "express";
 
 import {
-    uploadImage,getImages
+    uploadImage,getImages,deleteImage
 } from "../controllers/imageController.js";
 
 import {
@@ -17,6 +17,11 @@ router.post(
     authenticateToken,
     upload.single("image"),
     uploadImage
+);
+router.delete(
+    "/:id",
+    authenticateToken,
+    deleteImage
 );
 router.get("/",authenticateToken,getImages);
 

@@ -1,5 +1,5 @@
 import {
-    PutObjectCommand,GetObjectCommand
+    PutObjectCommand,GetObjectCommand,DeleteObjectCommand
 } from "@aws-sdk/client-s3";
 
 import storageClient from "../config/storage.js";
@@ -162,6 +162,59 @@ export const getImages = async(req,res)=>{
 
         return res.status(500).json({
             message:"Unable to fetch images"
+        });
+    }
+};
+export const deleteImage = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const imageId = req.params.id;
+
+        const result = await pool.query(
+            `
+            SELECT
+                id,
+                storage_key
+            FROM images
+            WHERE id = $1
+            AND user_id = $2
+            `,
+            [imageId, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Image not found"
+            });
+        }
+
+        const image = result.rows[0];
+
+        const command = new DeleteObjectCommand({
+            Bucket: process.env.MINIO_BUCKET,
+            Key: image.storage_key
+        });
+
+        await storageClient.send(command);
+
+        await pool.query(
+            `
+            DELETE FROM images
+            WHERE id = $1
+            AND user_id = $2
+            `,
+            [imageId, userId]
+        );
+
+        return res.status(200).json({
+            message: "Image deleted successfully"
+        });
+
+    } catch (error) {
+        console.error("Delete image error:", error);
+
+        return res.status(500).json({
+            message: "Unable to delete image"
         });
     }
 };
