@@ -274,3 +274,61 @@ export const renameImage = async (req, res) => {
         });
     }
 };
+export const downloadImage = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const imageId = req.params.id;
+
+        // Find image and make sure it belongs to this user
+        const result = await pool.query(
+            `
+            SELECT
+                id,
+                original_name,
+                storage_key,
+                mime_type
+            FROM images
+            WHERE id = $1
+            AND user_id = $2
+            `,
+            [imageId, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Image not found"
+            });
+        }
+
+        const image = result.rows[0];
+
+        const command = new GetObjectCommand({
+            Bucket: process.env.MINIO_BUCKET,
+            Key: image.storage_key,
+
+            ResponseContentDisposition:
+                `attachment; filename="${image.original_name}"`
+        });
+
+        const downloadUrl = await getSignedUrl(
+            storageClient,
+            command,
+            {
+                expiresIn: 60 * 5
+            }
+        );
+
+        return res.status(200).json({
+            message: "Download URL generated successfully",
+            downloadUrl,
+            expiresIn: 300
+        });
+
+    } catch (error) {
+        console.error("Download image error:", error);
+
+        return res.status(500).json({
+            message: "Unable to download image"
+        });
+    }
+};
