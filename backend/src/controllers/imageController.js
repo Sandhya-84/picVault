@@ -218,3 +218,59 @@ export const deleteImage = async (req, res) => {
         });
     }
 };
+
+export const renameImage = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const imageId = req.params.id;
+        const { newName } = req.body;
+
+        if (!newName || !newName.trim()) {
+            return res.status(400).json({
+                message: "New image name is required"
+            });
+        }
+
+        const result = await pool.query(
+            `
+            UPDATE images
+            SET
+                original_name = $1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+            AND user_id = $3
+            RETURNING
+                id,
+                original_name,
+                storage_key,
+                mime_type,
+                size_bytes,
+                is_locked,
+                updated_at
+            `,
+            [
+                newName.trim(),
+                imageId,
+                userId
+            ]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Image not found"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Image renamed successfully",
+            image: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error("Rename image error:", error);
+
+        return res.status(500).json({
+            message: "Unable to rename image"
+        });
+    }
+};

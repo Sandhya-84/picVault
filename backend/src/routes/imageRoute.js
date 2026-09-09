@@ -1,7 +1,6 @@
 import express from "express";
-
 import {
-    uploadImage,getImages,deleteImage
+    uploadImage,getImages,deleteImage,renameImage
 } from "../controllers/imageController.js";
 
 import {
@@ -24,5 +23,10 @@ router.delete(
     deleteImage
 );
 router.get("/",authenticateToken,getImages);
+router.patch(
+    "/:id/rename",
+    authenticateToken,
+    renameImage
+);
 
 export default router;
