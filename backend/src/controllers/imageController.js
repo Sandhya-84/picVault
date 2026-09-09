@@ -1,10 +1,10 @@
 import {
-    PutObjectCommand
+    PutObjectCommand,GetObjectCommand
 } from "@aws-sdk/client-s3";
 
 import storageClient from "../config/storage.js";
 import pool from "../config/db.js";
-
+import { getSignedUrl} from "@aws-sdk/s3-request-presigner";
 export const uploadImage = async (req, res) => {
     try {
         const userId = req.user.userId;
@@ -124,6 +124,44 @@ export const uploadImage = async (req, res) => {
 
         return res.status(500).json({
             message: "Unable to upload image"
+        });
+    }
+};
+
+export const getImages = async(req,res)=>{
+    try{
+        const userId = req.user.userId;
+        const result = await pool.query(`select id,original_name,storage_key,mime_type,size_bytes,is_locked,created_at 
+            from images
+            where user_id = $1
+            order by created_at DESC`,[userId]);
+            const images=await Promise.all(
+                result.rows.map(async(image)=>{
+                    const command = new GetObjectCommand({
+                        Bucket: process.env.MINIO_BUCKET,
+                        Key:image.storage_key
+                    });
+
+                    const signedUrl= await getSignedUrl(
+                        storageClient,command,{
+                            expiresIn:60*15
+                        }
+                    );
+                    return {
+                        ...image,
+                        url:signedUrl
+                    };
+                })
+            );
+
+            return res.status(200).json({
+                images
+            });
+    }catch(error){
+        console.error("get images error:",error);
+
+        return res.status(500).json({
+            message:"Unable to fetch images"
         });
     }
 };
