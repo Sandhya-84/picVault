@@ -135,25 +135,35 @@ export const getImages = async(req,res)=>{
             from images
             where user_id = $1
             order by created_at DESC`,[userId]);
-            const images=await Promise.all(
-                result.rows.map(async(image)=>{
-                    const command = new GetObjectCommand({
-                        Bucket: process.env.MINIO_BUCKET,
-                        Key:image.storage_key
-                    });
+            const images = await Promise.all(
+    result.rows.map(async (image) => {
 
-                    const signedUrl= await getSignedUrl(
-                        storageClient,command,{
-                            expiresIn:60*15
-                        }
-                    );
-                    return {
-                        ...image,
-                        url:signedUrl
-                    };
-                })
-            );
+        if (image.is_locked) {
+            return {
+                ...image,
+                url: null
+            };
+        }
 
+        const command = new GetObjectCommand({
+            Bucket: process.env.MINIO_BUCKET,
+            Key: image.storage_key
+        });
+
+        const signedUrl = await getSignedUrl(
+            storageClient,
+            command,
+            {
+                expiresIn: 60 * 15
+            }
+        );
+
+        return {
+            ...image,
+            url: signedUrl
+        };
+    })
+);
             return res.status(200).json({
                 images
             });
@@ -329,6 +339,143 @@ export const downloadImage = async (req, res) => {
 
         return res.status(500).json({
             message: "Unable to download image"
+        });
+    }
+};
+export const getStorageUsage = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        const result = await pool.query(
+            `
+            SELECT
+                u.storage_limit,
+                COALESCE(SUM(i.size_bytes), 0) AS storage_used
+            FROM users u
+            LEFT JOIN images i
+                ON i.user_id = u.id
+            WHERE u.id = $1
+            GROUP BY
+                u.id,
+                u.storage_limit
+            `,
+            [userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "User not found"
+            });
+        }
+
+        const storageLimit = Number(
+            result.rows[0].storage_limit
+        );
+
+        const storageUsed = Number(
+            result.rows[0].storage_used
+        );
+
+        const remainingStorage =
+            storageLimit - storageUsed;
+
+        return res.status(200).json({
+            storage: {
+                used: storageUsed,
+                remaining: remainingStorage,
+                limit: storageLimit
+            }
+        });
+
+    } catch (error) {
+        console.error(
+            "Storage usage error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Unable to fetch storage usage"
+        });
+    }
+};export const unlockImage = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const imageId = req.params.id;
+
+        const result = await pool.query(
+            `
+            UPDATE images
+            SET
+                is_locked = FALSE,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+            AND user_id = $2
+            RETURNING
+                id,
+                original_name,
+                is_locked,
+                updated_at
+            `,
+            [imageId, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Image not found"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Image unlocked successfully",
+            image: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error("Unlock image error:", error);
+
+        return res.status(500).json({
+            message: "Unable to unlock image"
+        });
+    }
+};
+export const lockImage = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const imageId = req.params.id;
+
+        const result = await pool.query(
+            `
+            UPDATE images
+            SET
+                is_locked = TRUE,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+            AND user_id = $2
+            RETURNING
+                id,
+                original_name,
+                is_locked,
+                updated_at
+            `,
+            [imageId, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Image not found"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Image locked successfully",
+            image: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error("Lock image error:", error);
+
+        return res.status(500).json({
+            message: "Unable to lock image"
         });
     }
 };

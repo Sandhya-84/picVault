@@ -1,6 +1,7 @@
 import express from "express";
 import {
-    uploadImage,getImages,deleteImage,renameImage,downloadImage
+    uploadImage,getImages,deleteImage,renameImage,downloadImage,getStorageUsage ,lockImage,
+    unlockImage
 } from "../controllers/imageController.js";
 
 import {
@@ -33,5 +34,20 @@ router.get(
     authenticateToken,
     downloadImage
 );
+router.get(
+    "/storage",
+    authenticateToken,
+    getStorageUsage
+);
+router.patch(
+    "/:id/lock",
+    authenticateToken,
+    lockImage
+);
 
+router.patch(
+    "/:id/unlock",
+    authenticateToken,
+    unlockImage
+);
 export default router;
