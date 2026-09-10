@@ -289,14 +289,14 @@ export const downloadImage = async (req, res) => {
         const userId = req.user.userId;
         const imageId = req.params.id;
 
-        // Find image and make sure it belongs to this user
         const result = await pool.query(
             `
             SELECT
                 id,
                 original_name,
                 storage_key,
-                mime_type
+                mime_type,
+                is_locked
             FROM images
             WHERE id = $1
             AND user_id = $2
@@ -312,10 +312,15 @@ export const downloadImage = async (req, res) => {
 
         const image = result.rows[0];
 
+        if (image.is_locked) {
+            return res.status(403).json({
+                message: "Image is locked. Additional verification is required."
+            });
+        }
+
         const command = new GetObjectCommand({
             Bucket: process.env.MINIO_BUCKET,
             Key: image.storage_key,
-
             ResponseContentDisposition:
                 `attachment; filename="${image.original_name}"`
         });
