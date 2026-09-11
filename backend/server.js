@@ -5,12 +5,16 @@ import pool from "./src/config/db.js";
 import authRoutes from "./src/routes/authRoute.js";
 import twoFactorRoutes from "./src/routes/twoFactorRoute.js";
 import imageRoutes from "./src/routes/imageRoute.js";
+import folderRoutes from "./src/routes/folderRoute.js";
+
+
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/2fa", twoFactorRoutes);
 app.use("/api/images", imageRoutes);
+app.use("/api/folders", folderRoutes);
 app.get("/", async (req, res) => {
     try {
         const result =
