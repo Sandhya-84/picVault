@@ -17,6 +17,28 @@ export const uploadImage = async (req, res) => {
 
         const file = req.file;
 
+        // Get folderId from form-data
+        const folderId = req.body.folderId || null;
+
+        // Check whether the folder belongs to the logged-in user
+        if (folderId) {
+            const folderResult = await pool.query(
+                `
+                SELECT id
+                FROM folders
+                WHERE id = $1
+                AND user_id = $2
+                `,
+                [folderId, userId]
+            );
+
+            if (folderResult.rows.length === 0) {
+                return res.status(404).json({
+                    message: "Folder not found"
+                });
+            }
+        }
+
         const storageResult = await pool.query(
             `
             SELECT
@@ -81,10 +103,11 @@ export const uploadImage = async (req, res) => {
                 original_name,
                 storage_key,
                 mime_type,
-                size_bytes
+                size_bytes,
+                folder_id
             )
             VALUES
-            ($1, $2, $3, $4, $5)
+            ($1, $2, $3, $4, $5, $6)
 
             RETURNING
                 id,
@@ -92,6 +115,7 @@ export const uploadImage = async (req, res) => {
                 storage_key,
                 mime_type,
                 size_bytes,
+                folder_id,
                 is_locked,
                 created_at
             `,
@@ -100,7 +124,8 @@ export const uploadImage = async (req, res) => {
                 file.originalname,
                 storageKey,
                 file.mimetype,
-                file.size
+                file.size,
+                folderId
             ]
         );
 
@@ -481,6 +506,175 @@ export const lockImage = async (req, res) => {
 
         return res.status(500).json({
             message: "Unable to lock image"
+        });
+    }
+};
+export const moveImage = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const imageId = req.params.id;
+
+        const { folderId } = req.body;
+
+        // If folderId is provided, check that the folder
+        // belongs to the logged-in user
+        if (folderId !== null && folderId !== undefined) {
+
+            const folderResult = await pool.query(
+                `
+                SELECT id
+                FROM folders
+                WHERE id = $1
+                AND user_id = $2
+                `,
+                [folderId, userId]
+            );
+
+            if (folderResult.rows.length === 0) {
+                return res.status(404).json({
+                    message: "Folder not found"
+                });
+            }
+        }
+
+        // Check that the image belongs to the logged-in user
+        const imageResult = await pool.query(
+            `
+            SELECT id, original_name, folder_id
+            FROM images
+            WHERE id = $1
+            AND user_id = $2
+            `,
+            [imageId, userId]
+        );
+
+        if (imageResult.rows.length === 0) {
+            return res.status(404).json({
+                message: "Image not found"
+            });
+        }
+
+        // Move image to the new folder
+        const result = await pool.query(
+            `
+            UPDATE images
+            SET
+                folder_id = $1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+            AND user_id = $3
+            RETURNING
+                id,
+                original_name,
+                folder_id,
+                updated_at
+            `,
+            [
+                folderId ?? null,
+                imageId,
+                userId
+            ]
+        );
+
+        return res.status(200).json({
+            message: "Image moved successfully",
+            image: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error("Move image error:", error);
+
+        return res.status(500).json({
+            message: "Unable to move image"
+        });
+    }
+};
+export const getFolderImages = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const folderId = req.params.id;
+
+        // Check that the folder belongs to the logged-in user
+        const folderResult = await pool.query(
+            `
+            SELECT id, name
+            FROM folders
+            WHERE id = $1
+            AND user_id = $2
+            `,
+            [folderId, userId]
+        );
+
+        if (folderResult.rows.length === 0) {
+            return res.status(404).json({
+                message: "Folder not found"
+            });
+        }
+
+        // Get images inside the folder
+        const result = await pool.query(
+            `
+            SELECT
+                id,
+                original_name,
+                storage_key,
+                mime_type,
+                size_bytes,
+                folder_id,
+                is_locked,
+                created_at
+            FROM images
+            WHERE folder_id = $1
+            AND user_id = $2
+            ORDER BY created_at DESC
+            `,
+            [folderId, userId]
+        );
+
+        // Generate signed URLs for unlocked images
+        const images = await Promise.all(
+            result.rows.map(async (image) => {
+
+                if (image.is_locked) {
+                    return {
+                        ...image,
+                        url: null
+                    };
+                }
+
+                const command = new GetObjectCommand({
+                    Bucket: process.env.MINIO_BUCKET,
+                    Key: image.storage_key
+                });
+
+                const signedUrl = await getSignedUrl(
+                    storageClient,
+                    command,
+                    {
+                        expiresIn: 60 * 15
+                    }
+                );
+
+                return {
+                    ...image,
+                    url: signedUrl
+                };
+            })
+        );
+
+        return res.status(200).json({
+            folder: folderResult.rows[0],
+            images
+        });
+
+    } catch (error) {
+        console.error(
+            "Get folder images error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Unable to fetch folder images"
         });
     }
 };

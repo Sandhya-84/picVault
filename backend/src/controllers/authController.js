@@ -105,6 +105,25 @@ export const login = async (req, res) => {
                 message: "Invalid email or password"
             });
         }
+
+        if(user.two_factor_enabled){
+            const tempToken = jwt.sign(
+                {
+                    userId: user.id,
+                    purpose:"2fa"
+                },
+                process.env.JWT_SECRET,
+                {
+                    expiresIn:"5m"
+                }
+            );
+
+            return res.status(200).json({
+                message:"Two factor authentication required",
+                requiresTwoFactor: true,
+                tempToken
+            });
+        }
         const token = jwt.sign(
             {
                 userId: user.id
