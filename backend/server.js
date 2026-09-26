@@ -5,8 +5,8 @@ import pool from "./src/config/db.js";
 import authRoutes from "./src/routes/authRoute.js";
 import twoFactorRoutes from "./src/routes/twoFactorRoute.js";
 import imageRoutes from "./src/routes/imageRoute.js";
-import folderRoutes from "./src/routes/folderRoute.js";
-import auditRoutes from "./src/routes/auditRoute.js";
+import folderRoutes from "./src/routes/folderRoutes.js";
+import auditRoutes from "./src/routes/auditRoutes.js";
 
 
 const app = express();

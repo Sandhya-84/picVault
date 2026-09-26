@@ -7,32 +7,16 @@ import {
     deleteFolder
 } from "../controllers/folderController.js";
 
-import {
-    authenticateToken
-} from "../middleware/authMiddleware.js";
+import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.post(
-    "/",
-    authenticateToken,
-    createFolder
-);
-router.get(
-    "/",
-    authenticateToken,
-    getFolders
-);
-router.patch(
-    "/:id",
-    authenticateToken,
-    renameFolder
-);
+router.post("/", authenticateToken, createFolder);
 
-router.delete(
-    "/:id",
-    authenticateToken,
-    deleteFolder
-);
+router.get("/", authenticateToken, getFolders);
+
+router.patch("/:id", authenticateToken, renameFolder);
+
+router.delete("/:id", authenticateToken, deleteFolder);
 
 export default router;
