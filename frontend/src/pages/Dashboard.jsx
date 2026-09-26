@@ -126,10 +126,11 @@ const Dashboard = () => {
                     </div>
 
                     <button
-                        className="px-5 py-3 bg-black text-white rounded-lg hover:bg-gray-800"
-                    >
-                        + Upload Image
-                    </button>
+    onClick={() => navigate("/upload")}
+    className="px-5 py-3 bg-black text-white rounded-lg hover:bg-gray-800"
+>
+    + Upload Image
+</button>
 
                 </div>
 

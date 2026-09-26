@@ -8,6 +8,9 @@ import {
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Register from "./pages/Register";
+import ProtectedRoute from "./components/ProtectedRoute";
+import UploadImage from "./pages/UploadImage";
+import Folders from "./pages/Folders";
 
 
 const VerifyTwoFactor = () => {
@@ -52,6 +55,31 @@ function App() {
                         />
                     }
                 />
+                <Route
+    path="/upload"
+    element={
+        <ProtectedRoute>
+            <UploadImage />
+        </ProtectedRoute>
+    }
+/>
+                <Route
+    path="/dashboard"
+    element={
+        <ProtectedRoute>
+            <Dashboard />
+        </ProtectedRoute>
+    }
+/>
+
+        <Route
+    path="/folders"
+    element={
+        <ProtectedRoute>
+            <Folders />
+        </ProtectedRoute>
+    }
+/>
 
             </Routes>
 
