@@ -1,13 +1,19 @@
 import express from "express";
+
 import {
-    uploadImage,getImages,deleteImage,renameImage,downloadImage,getStorageUsage ,lockImage,
-    unlockImage,moveImage,getFolderImages
+    uploadImage,
+    getImages,
+    deleteImage,
+    renameImage,
+    downloadImage,
+    getStorageUsage,
+    lockImage,
+    unlockImage,
+    moveImage,
+    getFolderImages
 } from "../controllers/imageController.js";
 
-import {
-    authenticateToken
-} from "../middleware/authMiddleware.js";
-
+import { authenticateToken } from "../middleware/authMiddleware.js";
 import upload from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
@@ -18,27 +24,37 @@ router.post(
     upload.single("image"),
     uploadImage
 );
-router.delete(
-    "/:id",
+
+router.get(
+    "/",
     authenticateToken,
-    deleteImage
+    getImages
 );
-router.get("/",authenticateToken,getImages);
-router.patch(
-    "/:id/rename",
+
+router.get(
+    "/storage/usage",
     authenticateToken,
-    renameImage
+    getStorageUsage
 );
+
+router.get(
+    "/folder/:id",
+    authenticateToken,
+    getFolderImages
+);
+
 router.get(
     "/:id/download",
     authenticateToken,
     downloadImage
 );
-router.get(
-    "/storage",
+
+router.patch(
+    "/:id/rename",
     authenticateToken,
-    getStorageUsage
+    renameImage
 );
+
 router.patch(
     "/:id/lock",
     authenticateToken,
@@ -50,14 +66,17 @@ router.patch(
     authenticateToken,
     unlockImage
 );
+
 router.patch(
     "/:id/move",
     authenticateToken,
     moveImage
 );
-router.get(
-    "/folder/:id",
+
+router.delete(
+    "/:id",
     authenticateToken,
-    getFolderImages
+    deleteImage
 );
+
 export default router;
