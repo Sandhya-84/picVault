@@ -309,6 +309,7 @@ export const renameImage = async (req, res) => {
         });
     }
 };
+
 export const downloadImage = async (req, res) => {
     try {
         const userId = req.user.userId;
@@ -320,8 +321,7 @@ export const downloadImage = async (req, res) => {
                 id,
                 original_name,
                 storage_key,
-                mime_type,
-                is_locked
+                mime_type
             FROM images
             WHERE id = $1
             AND user_id = $2
@@ -337,12 +337,6 @@ export const downloadImage = async (req, res) => {
 
         const image = result.rows[0];
 
-        if (image.is_locked) {
-            return res.status(403).json({
-                message: "Image is locked. Additional verification is required."
-            });
-        }
-
         const command = new GetObjectCommand({
             Bucket: process.env.MINIO_BUCKET,
             Key: image.storage_key,
@@ -353,22 +347,19 @@ export const downloadImage = async (req, res) => {
         const downloadUrl = await getSignedUrl(
             storageClient,
             command,
-            {
-                expiresIn: 60 * 5
-            }
+            { expiresIn: 300 }
         );
 
         return res.status(200).json({
             message: "Download URL generated successfully",
-            downloadUrl,
-            expiresIn: 300
+            url: downloadUrl
         });
 
     } catch (error) {
         console.error("Download image error:", error);
 
         return res.status(500).json({
-            message: "Unable to download image"
+            message: "Unable to generate download URL"
         });
     }
 };
