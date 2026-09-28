@@ -248,6 +248,38 @@ const Dashboard = () => {
             );
         }
     };
+    const handleToggleLock = async (image) => {
+    try {
+        setError("");
+
+        const action = image.is_locked
+            ? "unlock"
+            : "lock";
+
+        const response = await api.patch(
+            `/images/${image.id}/${action}`
+        );
+
+        setImages((currentImages) =>
+            currentImages.map((item) =>
+                item.id === image.id
+                    ? {
+                        ...item,
+                        ...response.data.image
+                    }
+                    : item
+            )
+        );
+
+    } catch (error) {
+        console.error("Lock/Unlock error:", error);
+
+        setError(
+            error.response?.data?.message ||
+            "Unable to update image lock status."
+        );
+    }
+};
 
     // =========================
     // DASHBOARD UI
@@ -494,6 +526,16 @@ const Dashboard = () => {
                                         >
                                             Download
                                         </button>
+                                        <button
+    onClick={() => handleToggleLock(image)}
+    className={`w-full mt-2 px-4 py-2 rounded-lg text-white ${
+        image.is_locked
+            ? "bg-green-600 hover:bg-green-700"
+            : "bg-gray-700 hover:bg-gray-800"
+    }`}
+>
+    {image.is_locked ? "🔓 Unlock Image" : "🔒 Lock Image"}
+</button>
 
                                     </div>
 
